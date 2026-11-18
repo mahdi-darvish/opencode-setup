@@ -1,0 +1,131 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "share": "disabled",
+  "plugins": ["/Users/korouji/opencode-setup/plugins/claude-usage"],
+  "model": "9router/cx/gpt-6.1-sol",
+  "small_model": "9router/cx/gpt-5.6-luna",
+  "provider": {
+    "9router": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "9router (local)",
+      "options": {
+        "baseURL": "http://localhost:20128/v1",
+        "apiKey": "{file:~/.config/opencode/9router.key}"
+      },
+      "models": {
+        "cc/claude-fable-5-2": {
+          "name": "Claude Fable 5.2 (Anthropic)",
+          "limit": { "context": 1000000, "output": 128000 }
+        },
+        "cc/claude-opus-5-5": {
+          "name": "Claude Opus 5.5 (Anthropic)",
+          "limit": { "context": 1000000, "output": 128000 }
+        },
+        "cc/claude-opus-5": {
+          "name": "Claude Opus 5 (Anthropic)",
+          "limit": { "context": 1000000, "output": 128000 }
+        },
+        "cc/claude-fable-5": {
+          "name": "Claude Fable 5 (Anthropic)",
+          "limit": { "context": 1000000, "output": 128000 }
+        },
+        "cc/claude-sonnet-5-5": {
+          "name": "Claude Sonnet 5.5 (Anthropic)",
+          "limit": { "context": 1000000, "output": 128000 }
+        },
+        "cc/claude-sonnet-5": {
+          "name": "Claude Sonnet 5 (Anthropic)",
+          "limit": { "context": 1000000, "output": 128000 }
+        },
+        "cc/claude-haiku-5-5": {
+          "name": "Claude Haiku 5.5 (Anthropic)",
+          "limit": { "context": 1000000, "output": 128000 }
+        },
+        "cc/claude-haiku-4-5-20251001": {
+          "name": "Claude Haiku 4.5 (Anthropic)",
+          "limit": { "context": 200000, "output": 64000 }
+        },
+        "cx/gpt-6.1-sol": {
+          "name": "GPT 6.1 Sol (ChatGPT)",
+          "limit": { "context": 272000, "output": 128000 }
+        },
+        "cx/gpt-6.1-terra": {
+          "name": "GPT 6.1 Terra (ChatGPT)",
+          "limit": { "context": 500000, "output": 128000 }
+        },
+        "cx/gpt-6-astra": {
+          "name": "GPT 6 Astra (ChatGPT)",
+          "limit": { "context": 272000, "output": 128000 }
+        },
+        "cx/gpt-6-astra[1m]": {
+          "name": "GPT 6 Astra (1M, ChatGPT)",
+          "limit": { "context": 872000, "output": 128000 }
+        },
+        "cx/gpt-6-sol": {
+          "name": "GPT 6 Sol (ChatGPT)",
+          "limit": { "context": 272000, "output": 128000 }
+        },
+        "cx/gpt-6-sol[1m]": {
+          "name": "GPT 6 Sol (1M, ChatGPT)",
+          "limit": { "context": 872000, "output": 128000 }
+        },
+        "cx/gpt-6-luna": {
+          "name": "GPT 6 Luna (ChatGPT)",
+          "limit": { "context": 272000, "output": 128000 }
+        },
+        "cx/gpt-6-luna[1m]": {
+          "name": "GPT 6 Luna (1M, ChatGPT)",
+          "limit": { "context": 872000, "output": 128000 }
+        },
+        "cx/gpt-5.6-sol": {
+          "name": "GPT 5.6 Sol (ChatGPT)",
+          "limit": { "context": 372000, "output": 128000 }
+        },
+        "cx/gpt-5.6-sol[1m]": {
+          "name": "GPT 5.6 Sol (1M, ChatGPT)",
+          "limit": { "context": 872000, "output": 128000 }
+        },
+        "cx/gpt-5.6-sol-review": {
+          "name": "GPT 5.6 Sol Review (ChatGPT)",
+          "limit": { "context": 372000, "output": 128000 }
+        },
+        "cx/gpt-5.6-terra": {
+          "name": "GPT 5.6 Terra (ChatGPT)",
+          "limit": { "context": 272000, "output": 128000 }
+        },
+        "cx/gpt-5.6-terra[1m]": {
+          "name": "GPT 5.6 Terra (1M, ChatGPT)",
+          "limit": { "context": 872000, "output": 128000 }
+        },
+        "cx/gpt-5.6-terra-review": {
+          "name": "GPT 5.6 Terra Review (ChatGPT)",
+          "limit": { "context": 272000, "output": 128000 }
+        },
+        "cx/gpt-5.6-luna": {
+          "name": "GPT 5.6 Luna (ChatGPT, fast)",
+          "limit": { "context": 272000, "output": 128000 }
+        },
+        "cx/gpt-5.6-luna[1m]": {
+          "name": "GPT 5.6 Luna (1M, ChatGPT)",
+          "limit": { "context": 872000, "output": 128000 }
+        },
+        "cx/gpt-5.6-luna-review": {
+          "name": "GPT 5.6 Luna Review (ChatGPT)",
+          "limit": { "context": 272000, "output": 128000 }
+        },
+        "cx/gpt-daybreak-blue-latest": {
+          "name": "GPT Daybreak Blue Latest (ChatGPT)",
+          "limit": { "context": 200000, "output": 64000 }
+        },
+        "cx/gpt-reserve": {
+          "name": "GPT Reserve (ChatGPT)",
+          "limit": { "context": 200000, "output": 64000 }
+        },
+        "cx/codex-auto-review": {
+          "name": "Codex Auto Review (ChatGPT)",
+          "limit": { "context": 200000, "output": 64000 }
+        }
+      }
+    }
+  }
+}

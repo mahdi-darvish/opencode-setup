@@ -1,0 +1,12 @@
+# Secrets: never commit these (they live in ~/.config/opencode)
+*.key
+*.password
+service.json
+.env*
+
+# Build output and dependencies
+node_modules/
+plugins/claude-usage/dist/
+plugins/snap-to-opencode/build-SnapToOpenCode
+
+.DS_Store
