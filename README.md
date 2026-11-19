@@ -6,6 +6,7 @@ My OpenCode configuration, plugins, and macOS helpers.
 
 | Path | What it is |
 |---|---|
+| `config/AGENTS.md` | Global instructions for every session: which tool to use for PDF, Excel, Word and PowerPoint, and how to report fallbacks. Symlinked from `~/.config/opencode/AGENTS.md`. |
 | `config/opencode.json` | Global OpenCode config: the 9router provider with all Claude (`cc/*`) and GPT (`cx/*`) models, and the plugin list. Symlinked from `~/.config/opencode/opencode.json`. |
 | `plugins/claude-usage` | OpenCode Desktop plugin: a Claude-style **Usage** panel with context window, 5-hour and weekly plan limits, and the active 9router account. |
 | `plugins/snap-to-opencode` | macOS helper: double-tap ⌘ to screenshot the screen and paste it into OpenCode. |
