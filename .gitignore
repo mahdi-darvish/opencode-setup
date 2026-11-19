@@ -2,6 +2,7 @@
 *.key
 *.password
 service.json
+email.json
 .env*
 
 # Build output and dependencies

@@ -13,7 +13,8 @@ function tone(percent: number) {
   return "ok"
 }
 
-function resetsIn(at: number, now: number) {
+function resetsIn(at: number | undefined, now: number) {
+  if (!at) return "Not started"
   const minutes = Math.max(0, Math.round((at - now) / 60_000))
   if (minutes < 60) return `Resets in ${minutes} min`
   const hours = Math.floor(minutes / 60)
@@ -95,7 +96,8 @@ function UsageView(props: { session: MountedSession }) {
     () => `${props.session.server.id}:${Math.floor(now() / 30_000)}:${step()?.id ?? ""}`,
     async () => (await props.session.server.client.rpc(ClaudeUsage).limits({})) as Limits,
   )
-  const account = () => (isClaude() ? limits.latest?.accounts?.claude : limits.latest?.accounts?.openai)
+  const plan = () => (isClaude() ? limits.latest?.claude : limits.latest?.openai)
+  const account = () => plan()?.account
 
   return (
     <div class="cu-root">
@@ -126,16 +128,17 @@ function UsageView(props: { session: MountedSession }) {
             )}
           </Show>
         </div>
+        <UsageRow title="Current session" window={plan()?.session} now={now()} />
+        <UsageRow title="Weekly limit" window={plan()?.weekly} now={now()} />
         <Show
-          when={isClaude()}
-          fallback={<div class="cu-muted">Shown for Claude models. 9router doesn't report ChatGPT plan limits.</div>}
+          when={!limits.latest?.error}
+          fallback={<div class="cu-foot cu-danger-text">Couldn't reach 9router: {limits.latest?.error}</div>}
         >
-          <UsageRow title="Current session" window={limits.latest?.session} now={now()} />
-          <UsageRow title="Weekly limit" window={limits.latest?.weekly} now={now()} />
           <Show when={limits.latest?.updated}>
-            {(updated) => (
-              <div class="cu-foot">Last updated {Math.max(0, Math.round((now() - updated()) / 60_000))} min ago</div>
-            )}
+            {(updated) => {
+              const minutes = () => Math.max(0, Math.round((now() - updated()) / 60_000))
+              return <div class="cu-foot">Updated {minutes() < 1 ? "just now" : `${minutes()} min ago`}</div>
+            }}
           </Show>
         </Show>
       </section>

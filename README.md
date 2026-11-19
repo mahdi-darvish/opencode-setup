@@ -10,6 +10,7 @@ My OpenCode configuration, plugins, and macOS helpers.
 | `plugins/claude-usage` | OpenCode Desktop plugin: a Claude-style **Usage** panel with context window, 5-hour and weekly plan limits, and the active 9router account. |
 | `plugins/snap-to-opencode` | macOS helper: double-tap ⌘ to screenshot the screen and paste it into OpenCode. |
 | `macos/local.korouji.snap-to-opencode.plist` | Starts the screenshot helper at login. |
+| `mcp/imap-email/server.py` | Read-only IMAP MCP server (standard-library Python, no dependencies). Tools: `list_folders`, `search_emails`, `read_email`, `mailbox_stats`. Cannot send, delete, move, or mark as read. |
 
 ## Secrets (not in this repo)
 
@@ -18,6 +19,9 @@ These stay in `~/.config/opencode` and are ignored by Git:
 - `9router.key`: 9router API key, used by `opencode.json`
 - `9router.password`: 9router dashboard password, used by the Usage panel to show the account name
 - `service.json`: OpenCode's local service password
+- `email.json`: mail server, port, username, and the path of the password file, used by the email MCP server:
+  `{"host": "...", "port": 993, "user": "...", "password_file": "~/.config/opencode/<name>.password"}`
+- the mailbox password file that `email.json` points to
 
 ## Set up on a new Mac
 

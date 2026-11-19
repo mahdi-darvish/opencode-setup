@@ -2,22 +2,11 @@ import { readFile } from "node:fs/promises"
 import { homedir } from "node:os"
 import { join } from "node:path"
 import { Plugin } from "@opencode/plugin"
-import { ClaudeUsage, type Accounts, type Limits, type UsageWindow } from "./rpc.js"
+import { ClaudeUsage, type Limits, type Plan, type UsageWindow } from "./rpc.js"
 
-const STORAGE_KEY = "limits"
 const ROUTER = "http://localhost:20128"
 const PASSWORD_FILE = join(homedir(), ".config/opencode/9router.password")
-
-function read(headers: Headers, name: "5h" | "7d"): UsageWindow | undefined {
-  const utilization = Number(headers.get(`anthropic-ratelimit-unified-${name}-utilization`))
-  const reset = Number(headers.get(`anthropic-ratelimit-unified-${name}-reset`))
-  if (!Number.isFinite(utilization) || !Number.isFinite(reset) || !headers.has(`anthropic-ratelimit-unified-${name}-reset`)) return
-  return {
-    utilization,
-    reset: reset * 1000,
-    status: headers.get(`anthropic-ratelimit-unified-${name}-status`) ?? "allowed",
-  }
-}
+const CACHE_MS = 30_000
 
 let cookie: string | undefined
 
@@ -33,47 +22,92 @@ async function login() {
   cookie = token
 }
 
-// Each log line: "date | model | PROVIDER | account | input | output | status", newest first.
-async function accounts(): Promise<Accounts> {
-  if (!cookie) await login()
-  let response = await fetch(`${ROUTER}/api/usage/request-logs`, { headers: { cookie: cookie! } })
-  if (response.status === 401) {
-    await login()
-    response = await fetch(`${ROUTER}/api/usage/request-logs`, { headers: { cookie: cookie! } })
+// 9router's dashboard API. Logs in again whenever the session has expired (401 or a redirect to the login page).
+async function router<T>(path: string): Promise<T> {
+  for (const attempt of [0, 1]) {
+    if (!cookie || attempt === 1) await login()
+    const response = await fetch(`${ROUTER}${path}`, { headers: { cookie: cookie! }, redirect: "manual" })
+    if (response.ok) return (await response.json()) as T
+    if (attempt === 1) throw new Error(`9router ${path} failed (${response.status})`)
   }
-  const lines = (await response.json()) as string[]
-  const result: Accounts = {}
-  for (const line of lines) {
+  throw new Error("unreachable")
+}
+
+interface Connection {
+  id: string
+  provider: string
+  name?: string
+  email?: string
+}
+
+interface Quota {
+  used: number
+  total: number
+  resetAt: string | null
+}
+
+function toWindow(quota: Quota | undefined): UsageWindow | undefined {
+  if (!quota || !quota.total) return
+  const reset = quota.resetAt ? Date.parse(quota.resetAt) : undefined
+  return {
+    utilization: quota.used / quota.total,
+    reset: Number.isFinite(reset) ? reset : undefined,
+    status: quota.used >= quota.total ? "rejected" : "allowed",
+  }
+}
+
+// Claude reports "session (5h)" / "weekly (7d)", Codex "session" / "weekly".
+function pick(quotas: Record<string, Quota>, prefix: string) {
+  const key = Object.keys(quotas).find((name) => name.toLowerCase().startsWith(prefix))
+  return key ? quotas[key] : undefined
+}
+
+async function plan(connection: Connection | undefined): Promise<Plan | undefined> {
+  if (!connection) return
+  const usage = await router<{ quotas?: Record<string, Quota> }>(`/api/usage/${connection.id}`)
+  const quotas = usage.quotas ?? {}
+  return {
+    account: connection.name || connection.email || connection.id.slice(0, 8),
+    session: toWindow(pick(quotas, "session")),
+    weekly: toWindow(pick(quotas, "weekly")),
+  }
+}
+
+// The account that served the newest request per provider. Log lines: "date | model | PROVIDER | account | in | out | status".
+async function load(): Promise<Limits> {
+  const [logs, providers] = await Promise.all([
+    router<string[]>("/api/usage/request-logs"),
+    router<{ connections?: Connection[] } | Connection[]>("/api/providers"),
+  ])
+  const connections = Array.isArray(providers) ? providers : (providers.connections ?? [])
+  const latest: Record<string, string> = {}
+  for (const line of logs) {
     const [, , provider, account] = line.split(" | ")
-    if (provider === "CLAUDE") result.claude ??= account
-    if (provider === "CODEX") result.openai ??= account
-    if (result.claude && result.openai) break
+    if (provider && account) latest[provider] ??= account
   }
-  return result
+  const find = (provider: string, label: string) => {
+    const own = connections.filter((item) => item.provider === provider)
+    return own.find((item) => (item.name || item.email) === latest[label]) ?? own[0]
+  }
+  const [claude, openai] = await Promise.all([plan(find("claude", "CLAUDE")), plan(find("codex", "CODEX"))])
+  return { updated: Date.now(), claude, openai }
 }
 
 export default Plugin.define({
   id: "claude-usage",
   async setup(ctx) {
-    let limits: Limits = ((await ctx.storage.get(STORAGE_KEY)) as Limits | undefined) ?? { updated: 0 }
-    let checked = 0
+    let limits: Limits = { updated: 0 }
+    let pending: Promise<Limits> | undefined
 
     await ctx.rpc.register(ClaudeUsage, {
       limits: async () => {
-        if (Date.now() - checked > 5_000) {
-          checked = Date.now()
-          limits = { ...limits, accounts: await accounts().catch(() => limits.accounts) }
-        }
-        return limits
+        if (Date.now() - limits.updated < CACHE_MS) return limits
+        pending ??= load()
+          .then((next) => (limits = next))
+          .catch((error: unknown) => ({ ...limits, error: error instanceof Error ? error.message : String(error) }))
+          .finally(() => (pending = undefined))
+        return pending
       },
-    })
-
-    await ctx.session.hook("http.response", (event) => {
-      const session = read(event.response.headers, "5h")
-      const weekly = read(event.response.headers, "7d")
-      if (!session && !weekly) return
-      limits = { ...limits, updated: Date.now(), session: session ?? limits.session, weekly: weekly ?? limits.weekly }
-      void ctx.storage.set(STORAGE_KEY, limits as never)
     })
   },
 })

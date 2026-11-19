@@ -127,5 +127,12 @@
         }
       }
     }
+  },
+  "mcp": {
+    "email": {
+      "type": "local",
+      "command": ["/usr/bin/python3", "/Users/korouji/opencode-setup/mcp/imap-email/server.py"],
+      "enabled": true
+    }
   }
 }

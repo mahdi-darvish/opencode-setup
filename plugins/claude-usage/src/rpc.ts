@@ -7,7 +7,18 @@ const window = {
     reset: { type: "number" },
     status: { type: "string" },
   },
-  required: ["utilization", "reset", "status"],
+  required: ["utilization", "status"],
+  additionalProperties: false,
+} as const
+
+const plan = {
+  type: "object",
+  properties: {
+    account: { type: "string" },
+    session: window,
+    weekly: window,
+  },
+  required: ["account"],
   additionalProperties: false,
 } as const
 
@@ -20,13 +31,9 @@ export const ClaudeUsage = Rpc.define({
         type: "object",
         properties: {
           updated: { type: "number" },
-          session: window,
-          weekly: window,
-          accounts: {
-            type: "object",
-            properties: { claude: { type: "string" }, openai: { type: "string" } },
-            additionalProperties: false,
-          },
+          claude: plan,
+          openai: plan,
+          error: { type: "string" },
         },
         required: ["updated"],
         additionalProperties: false,
@@ -38,18 +45,19 @@ export const ClaudeUsage = Rpc.define({
 
 export interface UsageWindow {
   utilization: number
-  reset: number
+  reset?: number
   status: string
+}
+
+export interface Plan {
+  account: string
+  session?: UsageWindow
+  weekly?: UsageWindow
 }
 
 export interface Limits {
   updated: number
-  session?: UsageWindow
-  weekly?: UsageWindow
-  accounts?: Accounts
-}
-
-export interface Accounts {
-  claude?: string
-  openai?: string
+  claude?: Plan
+  openai?: Plan
+  error?: string
 }
