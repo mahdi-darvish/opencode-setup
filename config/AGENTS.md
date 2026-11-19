@@ -1,5 +1,12 @@
 # Global instructions
 
+## Scope: do only what was asked
+- Do exactly the task the user asked for, then stop. Do not start follow-up tasks on your own.
+- Do not prepare things that weren't requested, such as drafting an email, a message, a document or an order "in advance".
+- At the end, you may suggest the next step in one short line (for example: "Want me to draft an email to the supplier?"). Then wait for the user's answer.
+- If the request is unclear or could reasonably mean a bigger task, ask one short question before starting.
+- Never send, order, buy, publish, delete or contact anyone without the user's explicit OK for that specific action.
+
 ## Reporting
 - If a tool fails and you use another method, say so in one line, and state clearly whether the task succeeded in the end.
 
