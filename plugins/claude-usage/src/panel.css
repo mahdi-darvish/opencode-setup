@@ -147,3 +147,9 @@
 [data-component="session-compaction-message"]:not(:has(.error-card)) {
   display: none;
 }
+
+/* Projects sidebar: hide the duplicate open-tab/Recent list below the tree.
+   Match only the Projects heading structure; leave project sessions intact. */
+section:has(> [class~="group/projects"]) + div {
+  display: none !important;
+}
