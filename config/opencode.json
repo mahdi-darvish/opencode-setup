@@ -1,9 +1,42 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "share": "disabled",
-  "plugins": ["/Users/korouji/opencode-setup/plugins/claude-usage"],
+  "plugins": [
+    "/Users/korouji/opencode-setup/plugins/claude-usage",
+    {
+      "package": "/Users/korouji/opencode-setup/plugins/claude-cache-diagnostic",
+      "options": { "expiresAt": 1795180995049 }
+    }
+  ],
   "model": "9router/cx/gpt-6.1-sol",
   "small_model": "9router/cx/gpt-5.6-luna",
+  "providers": {
+    "9router-claude-native": {
+      "name": "9router Claude (native Messages test)",
+      "package": "@opencode/ai/providers/anthropic-compatible",
+      "settings": {
+        "baseURL": "http://localhost:20128/v1",
+        "apiKey": "{file:~/.config/opencode/9router.key}"
+      },
+      "models": {
+        "claude-opus-5-5": {
+          "modelID": "cc/claude-opus-5-5",
+          "name": "Claude Opus 5.5 — native Messages (test)",
+          "family": "claude-opus",
+          "capabilities": {
+            "tools": true,
+            "input": ["text", "image"],
+            "output": ["text"],
+            "reasoning": {
+              "supported": true,
+              "effort": ["low", "medium", "high"]
+            }
+          },
+          "limit": { "context": 1000000, "output": 128000 }
+        }
+      }
+    }
+  },
   "provider": {
     "9router": {
       "npm": "@ai-sdk/openai-compatible",
@@ -132,6 +165,11 @@
     "email": {
       "type": "local",
       "command": ["/usr/bin/python3", "/Users/korouji/opencode-setup/mcp/imap-email/server.py"],
+      "enabled": true
+    },
+    "claude-workers": {
+      "type": "local",
+      "command": ["/usr/bin/python3", "/Users/korouji/opencode-setup/mcp/claude-workers/server.py"],
       "enabled": true
     }
   }

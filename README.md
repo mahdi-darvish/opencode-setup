@@ -11,6 +11,8 @@ My OpenCode configuration, plugins, and macOS helpers.
 | `plugins/claude-usage` | OpenCode Desktop plugin: a Claude-style **Usage** panel with context window, 5-hour and weekly plan limits, and the active 9router account. |
 | `plugins/snap-to-opencode` | macOS helper: double-tap ⌘ to screenshot the screen and paste it into OpenCode. |
 | `macos/local.korouji.snap-to-opencode.plist` | Starts the screenshot helper at login. |
+| `mcp/claude-workers/server.py` | MCP bridge to two Claude Code workers, each logged in to its own account (`~/.claude-dev`, `~/.claude-verify`). Keeps one continuing conversation per worker and project, with a 256k auto-compact window. Tools: `assign`, `status`, `list`, `cancel`, `reset`. |
+| `config/agents/coordinator.md` | GPT coordinator agent that hands coding to the developer worker and checks to the verifier. Symlinked from `~/.config/opencode/agents`. |
 | `mcp/imap-email/server.py` | Read-only IMAP MCP server (standard-library Python, no dependencies). Tools: `list_folders`, `search_emails`, `read_email`, `mailbox_stats`. Cannot send, delete, move, or mark as read. |
 
 ## Secrets (not in this repo)
