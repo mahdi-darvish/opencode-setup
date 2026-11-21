@@ -50,5 +50,17 @@ These stay in `~/.config/opencode` and are ignored by Git:
 
 ## Other tools
 
+### Watching Claude workers
+
+- Select **Workers** in the side pane’s **+** menu. It opens automatically when a worker starts in the current project.
+- A separate Developer and Verifier pill above the composer shows current activity. Click one to inspect that worker.
+- The panel shows actual model/account, task history, streaming public replies, expandable tool calls/results, elapsed time, Stop, latest request context and task token/cache totals.
+- Each account’s 5-hour and weekly limits come directly from Claude Code `rate_limit_event` messages, not 9router. They update on model responses; while idle, the panel labels the last observation and reset time. Opening the panel makes no AI requests.
+- Context is latest request **input**, not accumulated tokens across repeated requests. The 256k value is the auto-compaction budget, not a claim about the model’s actual capacity.
+- Activity snapshots live privately in `~/.local/share/claude-workers/jobs/` (mode 600), outside Git. The latest 160 public activity entries per task are displayed; long outputs are shortened. Hidden thinking and raw API requests are never collected. Stop preserves the session and existing file changes.
+- `python3 mcp/claude-workers/import_history.py` imports existing saved worker chats for display without copying hidden reasoning or API-request records.
+- Tests: `cd mcp/claude-workers && python3 -m unittest -v test_monitor.py`; GUI: run `tsc -p .` and `vite build` in `plugins/claude-usage`.
+- Design references: [Claude Code agent view](https://code.claude.com/docs/en/agent-view) and [Cursor background agents](https://cursor.com/docs/background-agent): worker status overview plus inspectable conversation/activity, rather than a single opaque waiting state.
+
 - **9router** runs in Docker (`decolua/9router`) on `http://localhost:20128`. Its accounts and settings live in the `9router-data` Docker volume, not here.
 - **OpenSuperWhisper** for voice input (hold right ⌥). Model: large-v3-turbo.

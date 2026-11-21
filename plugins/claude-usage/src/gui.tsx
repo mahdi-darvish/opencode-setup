@@ -3,6 +3,7 @@ import { lastAssistantWithUsage } from "@opencode/client/solid"
 import { createLatest, MenuItem, Panel, Plugin, Style, type MountedSession, type PanelTab } from "@opencode/plugin/gui"
 import { ClaudeUsage, type Limits, type UsageWindow } from "./rpc"
 import css from "./panel.css?inline"
+import { setupWorkers } from "./workers-gui"
 
 const number = new Intl.NumberFormat("en-US")
 const compact = new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 })
@@ -171,6 +172,7 @@ function UsageView(props: { session: MountedSession }) {
 export default Plugin.define({
   setup(ctx) {
     ctx.add(Style, css)
+    setupWorkers(ctx)
 
     const tab: PanelTab = { id: "main", title: "Usage", closable: "compact", fallback: true }
 

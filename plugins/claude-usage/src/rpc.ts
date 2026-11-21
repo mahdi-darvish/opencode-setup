@@ -25,6 +25,14 @@ const plan = {
 export const ClaudeUsage = Rpc.define({
   id: "claude-usage",
   methods: {
+    workers: {
+      input: { type: "object", properties: { directory: { type: "string" }, job: { type: "string" } }, required: ["directory"], additionalProperties: false },
+      output: { type: "object", properties: { payload: { type: "string" } }, required: ["payload"], additionalProperties: false },
+    },
+    stopWorker: {
+      input: { type: "object", properties: { id: { type: "string" } }, required: ["id"], additionalProperties: false },
+      output: { type: "object", properties: { ok: { type: "boolean" } }, required: ["ok"], additionalProperties: false },
+    },
     limits: {
       input: { type: "object", additionalProperties: false },
       output: {

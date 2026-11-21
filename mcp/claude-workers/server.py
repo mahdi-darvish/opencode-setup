@@ -22,6 +22,8 @@ import sys
 import threading
 import time
 import uuid
+import fcntl
+from monitor import Monitor, JOBS, snapshots, private_write, redact
 
 SERVER_NAME = "claude-workers"
 SERVER_VERSION = "1.0.0"
@@ -77,6 +79,17 @@ def save_sessions(data):
     os.replace(tmp, SESSIONS_FILE)
 
 
+def remember_session(key, session):
+    # There can be one MCP process per OpenCode project. Do not lose another
+    # project's saved session if two workers finish at the same time.
+    os.makedirs(STATE_DIR, mode=0o700, exist_ok=True)
+    with open(os.path.join(STATE_DIR, "sessions.lock"), "a") as handle:
+        fcntl.flock(handle, fcntl.LOCK_EX)
+        sessions = load_sessions()
+        sessions[key] = session
+        private_write(SESSIONS_FILE, sessions)
+
+
 def session_key(worker, directory):
     return "%s:%s" % (worker, os.path.realpath(directory))
 
@@ -86,7 +99,9 @@ def run_claude(job):
     key = session_key(job["worker"], job["directory"])
     with lock:
         session = None if job["new_session"] else load_sessions().get(key)
-    cmd = [CLAUDE, "-p", job["task"], "--output-format", "json",
+    monitor = Monitor(job)
+    job["resumed"] = bool(session)
+    cmd = [CLAUDE, "-p", job["task"], "--output-format", "stream-json", "--verbose", "--include-partial-messages",
            "--model", job["model"] or worker["model"],
            "--permission-mode", "auto", "--permission-prompts", "none",
            "--append-system-prompt", worker["prompt"]]
@@ -98,30 +113,56 @@ def run_claude(job):
                CLAUDE_CODE_AUTO_COMPACT_WINDOW=CONTEXT_WINDOW)
     # Claude Code looks up its keychain login by USER; without it the worker reports "Not logged in".
     env.setdefault("USER", pwd.getpwuid(os.getuid()).pw_name)
+    # These profiles must use their official Claude login, never inherited proxy credentials.
+    for name in list(env):
+        if name.startswith("ANTHROPIC_") or name in ("CLAUDE_CODE_OAUTH_TOKEN", "CLAUDECODE", "CLAUDE_CODE_USE_BEDROCK", "CLAUDE_CODE_USE_VERTEX", "CLAUDE_CODE_USE_FOUNDRY"):
+            env.pop(name, None)
     try:
         proc = subprocess.Popen(cmd, cwd=job["directory"], env=env, stdin=subprocess.DEVNULL,
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         job["pid"] = proc.pid
-        out, err = proc.communicate()
-        data = json.loads(out) if out.strip().startswith("{") else {}
-        if data.get("session_id"):
+        errors = []
+        def read_errors():
+            for line in proc.stderr:
+                errors.append(line)
+                del errors[:-30]
+        def controls():
+            control = JOBS / (job["id"] + ".cancel")
+            while proc.poll() is None:
+                if control.exists() or job.get("cancelled"):
+                    job["cancelled"] = True
+                    control.unlink(missing_ok=True)
+                    try:
+                        proc.send_signal(2)
+                    except ProcessLookupError:
+                        pass
+                    return
+                # Heartbeat distinguishes a quiet model request from a disconnected bridge.
+                time.sleep(1)
+        threading.Thread(target=read_errors, daemon=True).start()
+        threading.Thread(target=controls, daemon=True).start()
+        for line in proc.stdout:
+            try:
+                monitor.consume(json.loads(line))
+            except ValueError:
+                continue
+        proc.wait()
+        if job.get("session_id"):
             with lock:
-                sessions = load_sessions()
-                sessions[key] = data["session_id"]
-                save_sessions(sessions)
-        usage = data.get("usage") or {}
+                remember_session(key, job["session_id"])
         job.update(
-            status="cancelled" if job.get("cancelled") else ("done" if proc.returncode == 0 else "failed"),
-            result=data.get("result") or out.strip() or err.strip()[-2000:],
-            session_id=data.get("session_id"),
-            resumed=bool(session),
-            denied=[d.get("tool_name") for d in data.get("permission_denials") or []],
-            tokens={"input": usage.get("input_tokens"), "cache_read": usage.get("cache_read_input_tokens"),
-                    "cache_write": usage.get("cache_creation_input_tokens"), "output": usage.get("output_tokens")},
+            status="cancelled" if job.get("cancelled") else ("done" if proc.returncode == 0 and not job.get("is_error") else "failed"),
+            result=job.get("result") or "".join(errors)[-2000:] or "Claude Code exited without a report",
         )
+        job["activity"] = "Permission denied — see report" if job.get("denied") else {
+            "done": "Finished", "failed": "Failed — see report", "cancelled": "Stopped"}[job["status"]]
     except Exception as e:  # noqa: BLE001
         job.update(status="failed", result="Error: %s" % e)
+        job["activity"] = "Failed — see report"
+    job["result"] = redact(job.get("result", ""))
     job["finished"] = time.time()
+    job["updated"] = time.time()
+    monitor.flush(True)
 
 
 accounts = {}
@@ -141,7 +182,7 @@ def account(worker):
 
 
 def public(job):
-    keys = ["id", "worker", "account", "directory", "status", "result", "session_id", "resumed", "denied", "tokens"]
+    keys = ["id", "worker", "account", "directory", "status", "activity", "result", "session_id", "resumed", "denied", "tokens", "model", "context_tokens", "context_budget", "limits"]
     out = {k: job.get(k) for k in keys if job.get(k) not in (None, [], "")}
     end = job.get("finished") or time.time()
     out["seconds"] = round(end - job["started"])
@@ -159,15 +200,13 @@ def tool_assign(args):
         raise ValueError("directory does not exist: %s" % directory)
     if not (args.get("task") or "").strip():
         raise ValueError("task is empty")
-    with lock:
-        busy = [j for j in jobs.values() if j["status"] == "running" and j["worker"] == worker
-                and os.path.realpath(j["directory"]) == os.path.realpath(directory)]
+    busy = [j for j in snapshots(directory) if j["status"] == "running" and j["worker"] == worker]
     if busy:
         raise ValueError("%s is still working on job %s in this project; wait for it or cancel it" % (worker, busy[0]["id"]))
     job = {"id": uuid.uuid4().hex[:8], "worker": worker, "account": account(worker),
            "directory": directory, "task": args["task"],
            "model": args.get("model"), "effort": args.get("effort"), "new_session": bool(args.get("new_session")),
-           "status": "running", "started": time.time()}
+            "status": "running", "started": time.time(), "owner_pid": os.getpid()}
     jobs[job["id"]] = job
     thread = threading.Thread(target=run_claude, args=(job,), daemon=True)
     thread.start()
@@ -176,27 +215,30 @@ def tool_assign(args):
 
 
 def tool_status(args):
-    job = jobs.get(args.get("job_id") or "")
+    job = jobs.get(args.get("job_id") or "") or next((j for j in snapshots() if j["id"] == args.get("job_id")), None)
     if not job:
         raise ValueError("unknown job id")
     wait = min(max(int(args.get("wait_seconds", 0)), 0), 3000)
     deadline = time.time() + wait
     while job["status"] == "running" and time.time() < deadline:
         time.sleep(2)
+        if job["id"] not in jobs:
+            job = next((j for j in snapshots() if j["id"] == job["id"]), job)
     return public(job)
 
 
 def tool_list(_args):
     sessions = load_sessions()
-    return {"jobs": [public(j) | {"result": (j.get("result") or "")[:200]} for j in jobs.values()],
+    return {"jobs": [public(j) | {"result": (j.get("result") or "")[:200]} for j in snapshots()[:40]],
             "sessions": sessions}
 
 
 def tool_cancel(args):
-    job = jobs.get(args.get("job_id") or "")
+    job = jobs.get(args.get("job_id") or "") or next((j for j in snapshots() if j["id"] == args.get("job_id")), None)
     if not job or job["status"] != "running":
         raise ValueError("no running job with that id")
     job["cancelled"] = True
+    private_write(JOBS / (job["id"] + ".cancel"), {"requested": time.time()})
     if job.get("pid"):
         os.kill(job["pid"], 2)  # SIGINT lets Claude Code end the turn cleanly
     return {"id": job["id"], "status": "cancelling"}

@@ -3,6 +3,7 @@ import { homedir } from "node:os"
 import { join } from "node:path"
 import { Plugin } from "@opencode/plugin"
 import { ClaudeUsage, type Limits, type Plan, type UsageWindow } from "./rpc.js"
+import { workerSnapshot, stopWorker } from "./workers.js"
 
 const ROUTER = "http://localhost:20128"
 const PASSWORD_FILE = join(homedir(), ".config/opencode/9router.password")
@@ -100,6 +101,11 @@ export default Plugin.define({
     let pending: Promise<Limits> | undefined
 
     await ctx.rpc.register(ClaudeUsage, {
+      workers: async (input) => {
+        const { directory, job } = input as { directory: string; job?: string }
+        return { payload: JSON.stringify(await workerSnapshot(directory, job)) }
+      },
+      stopWorker: async (input) => stopWorker((input as { id: string }).id),
       limits: async () => {
         if (Date.now() - limits.updated < CACHE_MS) return limits
         pending ??= load()

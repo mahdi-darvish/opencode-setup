@@ -170,6 +170,7 @@
     "claude-workers": {
       "type": "local",
       "command": ["/usr/bin/python3", "/Users/korouji/opencode-setup/mcp/claude-workers/server.py"],
+      "environment": { "CLAUDE_WORKERS_CONTEXT": "256k" },
       "enabled": true
     }
   }
