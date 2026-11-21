@@ -139,3 +139,11 @@
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+
+/* Manual compaction: hide the summary and status lines, keep only errors. */
+[data-component="session-compaction-message"] > :not(.error-card):not(:has(.error-card)) {
+  display: none;
+}
+[data-component="session-compaction-message"]:not(:has(.error-card)) {
+  display: none;
+}

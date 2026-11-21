@@ -124,8 +124,24 @@ def run_claude(job):
     job["finished"] = time.time()
 
 
+accounts = {}
+
+
+def account(worker):
+    """Email of the Claude account the worker is logged in to, cached per run."""
+    if worker not in accounts:
+        try:
+            env = dict(os.environ, CLAUDE_CONFIG_DIR=WORKERS[worker]["config"])
+            env.setdefault("USER", pwd.getpwuid(os.getuid()).pw_name)
+            out = subprocess.run([CLAUDE, "auth", "status"], env=env, capture_output=True, text=True, timeout=30).stdout
+            accounts[worker] = json.loads(out).get("email") or "not logged in"
+        except Exception:  # noqa: BLE001
+            return "unknown"
+    return accounts[worker]
+
+
 def public(job):
-    keys = ["id", "worker", "directory", "status", "result", "session_id", "resumed", "denied", "tokens"]
+    keys = ["id", "worker", "account", "directory", "status", "result", "session_id", "resumed", "denied", "tokens"]
     out = {k: job.get(k) for k in keys if job.get(k) not in (None, [], "")}
     end = job.get("finished") or time.time()
     out["seconds"] = round(end - job["started"])
@@ -148,7 +164,8 @@ def tool_assign(args):
                 and os.path.realpath(j["directory"]) == os.path.realpath(directory)]
     if busy:
         raise ValueError("%s is still working on job %s in this project; wait for it or cancel it" % (worker, busy[0]["id"]))
-    job = {"id": uuid.uuid4().hex[:8], "worker": worker, "directory": directory, "task": args["task"],
+    job = {"id": uuid.uuid4().hex[:8], "worker": worker, "account": account(worker),
+           "directory": directory, "task": args["task"],
            "model": args.get("model"), "effort": args.get("effort"), "new_session": bool(args.get("new_session")),
            "status": "running", "started": time.time()}
     jobs[job["id"]] = job

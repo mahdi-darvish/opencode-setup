@@ -8,6 +8,7 @@
 - Never send, order, buy, publish, delete or contact anyone without the user's explicit OK for that specific action.
 
 ## Reporting
+- If an answer is longer than a few lines, end it with a **Short version**: 2–4 bullet points with only what the user needs to know or do.
 - If a tool fails and you use another method, say so in one line, and state clearly whether the task succeeded in the end.
 
 ## Reading and writing documents
